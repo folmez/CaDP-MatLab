@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## 1.1 - 2017-03-21
 ### Changed
+- CaDP.m: Figure 3B is added with partial success. The shape is similar but it is not quantitatively identical to what is in Shouval 2002. I will leave this as it is right now and continue with Figure 3C next time.
+- calculate_spike_times.m: If the time interval is not long enough to the stimulation, simulation end time is updated.
+
+
+## 1.1 - 2017-03-21
+### Changed
 - CaDP.m: Figure 3A is succesfully added
 - update_w.m: Eta function has the units 1/sec rather than 1/msec. The synaptic plasticity equation is corrected.
 - BPAP.m: "Narrow BPAP" and "BPAP + ADP" options are added according to Shouval 2002.

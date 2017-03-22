@@ -19,10 +19,12 @@ if which_parameters == 1
 elseif which_parameters == 2
     % Shouval 2002: Figures 3B and 5B
     s = 10;
+elseif which_parameters == 3
+    s = 20;    
 end
 
 % Output arguments
-exp_terms = exp((t_pre_spikes-t)/tau_1)-exp((t_pre_spikes-t)/tau_2);
+exp_terms = exp((t_pre_spikes-t)/tau_1) - exp((t_pre_spikes-t)/tau_2);
 varargout{1} = s/norm * sum(exp_terms);
 
 end

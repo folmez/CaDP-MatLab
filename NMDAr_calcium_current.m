@@ -16,7 +16,7 @@ I_s    = 1-I_f;     % Relative magnitude of the slow component
 tau_f  = 50;        % Fast component decay rate (in ms)
 tau_s  = 200;       % Slow component decay rate (in ms)
 
-Mg = 1;                                     % Magnesium (Mg) concentration
+Mg = 1;                                   % Magnesium (Mg) concentration
 B  = @(V) 1/(1+exp(-0.062*V)*(Mg/3.57));  % Effect of Mg block    
 
 % Output arguments

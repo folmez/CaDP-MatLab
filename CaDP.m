@@ -82,7 +82,7 @@ end
 
 %% PAIRING PRESYNAPTIC STIMULATION WITH POSTSYNAPTIC VOLTAGE CLAMP
 if strcmp(sim_protocol, 'PPSwPVC')
-    % Reference: Figure 3 in Shouval 2002
+    % Reference: Figure 3A in Shouval 2002
     % Figure 3A: CaDP('PPSwPVC', [0 1e5], [1 100], [-65:1:-10]);
     
     % Input arguments
@@ -102,14 +102,14 @@ if strcmp(sim_protocol, 'PPSwPVC')
     
     for V_post_c_idx = 1:nr_v_post_c
         % Initialization
-        V_post_c = V_post_c_vec(V_post_c_idx);      
+        V_post_c = V_post_c_vec(V_post_c_idx);
         V_post = V_post_c * ones(nr_time_steps, 1); % Postsyn. membrane pot.
         NMDAr_cal_cur = zeros(nr_time_steps, 1);    % NMDAr calcium current
         Ca = zeros(nr_time_steps, 1);               % Calcium level
         w  = w_init*ones(nr_time_steps, 1);         % Syanptic weight
         
         t_pre_spikes = calculate_spike_times(...
-            pre_spike_freq, nr_pre_spikes, [t0 tend]);        
+            pre_spike_freq, nr_pre_spikes, [t0 tend]);
         
         % Model
         tSIM = tic;
@@ -175,9 +175,9 @@ if strcmp(sim_protocol, 'PPSwPVC')
     end
     
     % Plot potential vs w(final)/w(0) at the end
-    if nr_v_post_c > 1        
+    if nr_v_post_c > 1
         figure,
-        plot(V_post_c_vec, w_final/w_init); 
+        plot(V_post_c_vec, w_final/w_init);
         hold on;
         plot([-70 -10], [1 1], 'k--');
         xlabel('mV', 'FontSize', 15);
@@ -188,5 +188,126 @@ if strcmp(sim_protocol, 'PPSwPVC')
     end
 end
 
+%% Varying the Rate of Presynaptic Stimulation
+if strcmp(sim_protocol, 'VtRoPS')
+    % Reference: Figure 3B in Shouval 2002
+    
+    % Input arguments
+    pre_spike_freq = varargin{2};       % Presynaptic freq (in Hz)
+    nr_pre_spikes  = varargin{3};       % # of presynaptic pulses
+    
+    t0             = 0;                 % in ms
+    dt             = 1;                 % in ms
+    w_init         = 0.25;              % Initial weight
+    V_rest         = -65;               % Resting potential
+    EPSP_norm      = 0.6968;            % See Shouval 2002 supplementary
+    EPSP_param_set = 2;
+    
+    nr_freq = length(pre_spike_freq);
+    w_final = zeros(nr_freq,1);
+    for freq_idx = 1:nr_freq
+        % Calculate spike times, update tend if necessary
+        [t_pre_spikes, tend] = calculate_spike_times(...
+            pre_spike_freq(freq_idx), nr_pre_spikes, [t0 0]);
+        
+        % Initialization
+        nr_time_steps = (tend-t0)/dt+1;
+        V_post = V_rest * ones(nr_time_steps, 1);   % Postsyn. membrane pot.
+        NMDAr_cal_cur = zeros(nr_time_steps, 1);    % NMDAr calcium current
+        Ca = zeros(nr_time_steps, 1);               % Calcium level
+        w  = w_init*ones(nr_time_steps, 1);         % Syanptic weight
+        
+        % Model
+        tSIM = tic;                 % Keep track of the whole simulations
+        tDisplay = tic;             % Keep track display renewal
+        display_time_interval = 60; % seconds
+        for i = 2:nr_time_steps
+            t_next = t0+i*dt;
+            % Find the most recent presynaptic spike time indices
+            recent_t_pre_spike_idx = find(t_pre_spikes<t_next);
+            % Choose inf as the pre spike time if no spikes yet, as this will
+            % return a 0 calcium current because of the use of the Heaviside
+            % function
+            if recent_t_pre_spike_idx==0
+                recent_t_pre_spikes = inf;
+            else
+                recent_t_pre_spikes = t_pre_spikes(recent_t_pre_spike_idx);
+            end
+            V_post(i) = V_rest + ...
+                EPSP(t_next, recent_t_pre_spikes, ...
+                EPSP_norm, EPSP_param_set);
+            NMDAr_cal_cur(i) = NMDAr_calcium_current( ...
+                t_next, recent_t_pre_spikes(end), V_post(i));
+            Ca(i) = update_Ca(Ca(i-1), NMDAr_cal_cur(i), dt);
+            w(i)  = update_w(w(i-1), Ca(i), dt);
+            
+            % Display simulation progress
+            if toc(tDisplay) > display_time_interval
+                % Renew display clock
+                tDisplay = tic;
+                fprintf('%3.2f%% is completed in %3.2f minutes...\n', ...
+                    100*i/nr_time_steps, toc(tSIM)/60);
+            end
+        end
+        
+        % Plot results
+        if nr_freq==1
+            tt = linspace(t0, tend, nr_time_steps)';
+            plot_only_w = 0;
+            if plot_only_w
+                plot(tt, w);
+                h_leg = legend('Synaptic weight', 'Location', 'Best');
+                set(h_leg, 'FontSize', 15);
+                xlabel('Time (ms)', 'FontSize', 15);
+            else
+                figure,
+                subplot(2,2,1),
+                plot(tt, Ca);
+                ylim([0 max([1 max(Ca)])]);
+                title('Calcium level', 'FontSize', 15);
+                xlabel('Time (ms)', 'FontSize', 15);
+                hold on;
+                plot([t0 tend], [0.35 0.35], 'k--');
+                plot([t0 tend], [0.55 0.55], 'k--');
+                
+                subplot(2,2,2),
+                plot(tt, w);
+                title('Synaptic weight', 'FontSize', 15);
+                xlabel('Time (ms)', 'FontSize', 15);
+                
+                subplot(2,2,3),
+                plot(tt, NMDAr_cal_cur);
+                title('NMDAr calcium current', 'FontSize', 15);
+                xlabel('Time (ms)', 'FontSize', 15);
+                
+                subplot(2,2,4),
+                plot(tt, V_post);
+                title('Postsynaptic potential', 'FontSize', 15);
+                xlabel('Time (ms)', 'FontSize', 15);
+            end
+        end
+        
+        % Calculate final weight as the average of min and max in the last
+        % 1 percent of simulation
+        w_final(freq_idx) = ( min(w(end-(nr_time_steps-1)/100:end)) + ...
+            max(w(end-(nr_time_steps-1)/100:end)) ) / 2;
+        fprintf('Pre. stimulation rate = %i,\t', ...
+            pre_spike_freq(freq_idx));
+        fprintf('w_final/w_init = %1.1f\n', w_final(freq_idx)/w_init);
+    end
+    
+    % Plot presynaptic freq vs w(final)/w(0) at the end
+    if nr_freq > 1
+        figure,
+        plot(pre_spike_freq, w_final/w_init);
+        %         hold on;
+        %         plot([-70 -10], [1 1], 'k--');
+        %         xlabel('mV', 'FontSize', 15);
+        %         xlim([-70 -10]);
+        %         ylabel('w(final)/w(init)', 'FontSize', 15);
+        %         ylim([0 4]);
+        title(['epsp norm = ' num2str(EPSP_norm)], 'FontSize', 15);
+    end
+end
 
 end
