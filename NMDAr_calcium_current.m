@@ -2,10 +2,11 @@ function varargout = NMDAr_calcium_current(varargin)
 
 % Input arguments
 t = varargin{1};            % Time
-t_pre_spike = varargin{2};  % Presynaptic spike time (in ms)
+t_pre_spikes = varargin{2}; % Presynaptic spike time (in ms)
 V   = varargin{3};          % Postysnaptic membrane potential (in mV)
+which_method = 2;
 
-t_i = t-t_pre_spike;
+t_i = t-t_pre_spikes;
 
 % Fixed variables and functions
 P0     = 0.5;       % Fraction of NMDArs that move from closed to open
@@ -20,15 +21,22 @@ Mg = 1;                                   % Magnesium (Mg) concentration
 B  = @(V) 1/(1+exp(-0.062*V)*(Mg/3.57));  % Effect of Mg block    
 
 % Output arguments
-if t_i>0
-    varargout{1} = P0 * G_NMDA * ...
-        ( I_f*exp(-t_i/tau_f) + I_s*exp(-t_i/tau_s) ) * B(V) * (V-V_r);
+if t_i(end) > 0
+    if which_method == 1
+        t_i = t_i(end);
+        varargout{1} = P0 * G_NMDA * ...
+            ( I_f*exp(-t_i/tau_f) + I_s*exp(-t_i/tau_s) ) * B(V) * (V-V_r);
+        varargout{2} = P0 * ( I_f*exp(-t_i/tau_f) + I_s*exp(-t_i/tau_s) );
+    elseif which_method == 2
+        closed_NMDAr_frac_before_spikes = varargin{4};
+        NMDAr_frac = sum( closed_NMDAr_frac_before_spikes .* P0 .* ...
+            (I_f*exp(-t_i/tau_f) + I_s*exp(-t_i/tau_s)) );
+        varargout{1} = NMDAr_frac * G_NMDA * B(V) * (V-V_r);
+        varargout{2} = NMDAr_frac;
+    end
 else
     varargout{1} = 0;
-end
-if length(varargout)>1
-    varargout{2} = P0 * heaviside(t_i) * ...
-        ( I_f*exp(-t_i/tau_f) + I_s*exp(-t_i/tau_s) );
+    varargout{2} = 0;
 end
 
 end

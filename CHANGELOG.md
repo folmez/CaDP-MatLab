@@ -2,7 +2,13 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 1.1 - 2017-03-21
+## 1.2 - 2017-03-23
+### Changed
+- CaDP.m: Figure 3B is corrected with success. The problem was that I was considering half of all channels opening up after each spike. However, according to Shouval 2002, half of all closed channels open up after each spike. This means, for higher frequencies, while a portion of the channels are open, half of the remaining closed channels open up after a spike and this may make fraction of open NMDAr channels more than 0.5. This is why previously smaller frequencies produced good results but higher frequencies did not.
+
+- NMDAr_calcium_current.m: A second option is added to calculate the number of open NMDAr channels according to above description. For every pre spike time, the number of closed channels right before the spike is recorded and used to track the number of channels that stay open due to a particular spike.
+
+## 1.1 - 2017-03-22
 ### Changed
 - CaDP.m: Figure 3B is added with partial success. The shape is similar but it is not quantitatively identical to what is in Shouval 2002. I will leave this as it is right now and continue with Figure 3C next time.
 - calculate_spike_times.m: If the time interval is not long enough to the stimulation, simulation end time is updated.

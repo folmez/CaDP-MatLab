@@ -209,10 +209,13 @@ if strcmp(sim_protocol, 'VtRoPS')
         % Calculate spike times, update tend if necessary
         [t_pre_spikes, tend] = calculate_spike_times(...
             pre_spike_freq(freq_idx), nr_pre_spikes, [t0 0]);
-        
+        % Initialize number of "closed NMDArs" right before each spike
+        closed_NMDAr_frac_before_spikes = ones(nr_pre_spikes, 1);
+
         % Initialization
         nr_time_steps = (tend-t0)/dt+1;
         V_post = V_rest * ones(nr_time_steps, 1);   % Postsyn. membrane pot.
+        NMDAr_frac = zeros(nr_time_steps, 1);       % Open NMDAr frac
         NMDAr_cal_cur = zeros(nr_time_steps, 1);    % NMDAr calcium current
         Ca = zeros(nr_time_steps, 1);               % Calcium level
         w  = w_init*ones(nr_time_steps, 1);         % Syanptic weight
@@ -221,23 +224,23 @@ if strcmp(sim_protocol, 'VtRoPS')
         tSIM = tic;                 % Keep track of the whole simulations
         tDisplay = tic;             % Keep track display renewal
         display_time_interval = 60; % seconds
+        last_spike_time = [];
         for i = 2:nr_time_steps
             t_next = t0+i*dt;
             % Find the most recent presynaptic spike time indices
-            recent_t_pre_spike_idx = find(t_pre_spikes<t_next);
-            % Choose inf as the pre spike time if no spikes yet, as this will
-            % return a 0 calcium current because of the use of the Heaviside
-            % function
-            if recent_t_pre_spike_idx==0
-                recent_t_pre_spikes = inf;
-            else
-                recent_t_pre_spikes = t_pre_spikes(recent_t_pre_spike_idx);
+            recent_t_pre_spikes = t_pre_spikes( t_pre_spikes < t_next );
+            spike_number = length(recent_t_pre_spikes);
+            % Record number of closed NMDArs if a new spike is coming
+            if recent_t_pre_spikes(end) ~= last_spike_time
+                closed_NMDAr_frac_before_spikes(spike_number) = 1-NMDAr_frac(i-1);
             end
             V_post(i) = V_rest + ...
                 EPSP(t_next, recent_t_pre_spikes, ...
                 EPSP_norm, EPSP_param_set);
-            NMDAr_cal_cur(i) = NMDAr_calcium_current( ...
-                t_next, recent_t_pre_spikes(end), V_post(i));
+            [NMDAr_cal_cur(i), NMDAr_frac(i)] = ...
+                NMDAr_calcium_current( ...
+                t_next, recent_t_pre_spikes, V_post(i), ...
+                closed_NMDAr_frac_before_spikes(1:spike_number));
             Ca(i) = update_Ca(Ca(i-1), NMDAr_cal_cur(i), dt);
             w(i)  = update_w(w(i-1), Ca(i), dt);
             
@@ -248,6 +251,8 @@ if strcmp(sim_protocol, 'VtRoPS')
                 fprintf('%3.2f%% is completed in %3.2f minutes...\n', ...
                     100*i/nr_time_steps, toc(tSIM)/60);
             end
+                        
+            last_spike_time = recent_t_pre_spikes(end);
         end
         
         % Plot results
@@ -283,6 +288,15 @@ if strcmp(sim_protocol, 'VtRoPS')
                 subplot(2,2,4),
                 plot(tt, V_post);
                 title('Postsynaptic potential', 'FontSize', 15);
+                xlabel('Time (ms)', 'FontSize', 15);
+                
+                figure,
+                plot(tt, NMDAr_frac);
+                hold on;
+                plot(t_pre_spikes, closed_NMDAr_frac_before_spikes, '*');                
+                legend('open NMDAr fraction', ...
+                    'closed NMDAr fraction right before spikes', ...
+                    'FontSize', 15);
                 xlabel('Time (ms)', 'FontSize', 15);
             end
         end
