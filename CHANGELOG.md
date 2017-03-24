@@ -2,6 +2,20 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 1.4 - 
+### TO-DO
+- The framework for Figure 4-5 is already finished. Update pdf with these results.
+- Why is 3C not fully replicated? Figure this out.
+
+
+## 1.3 - 2017-03-24
+### Changed
+- CaDP.m: Figure 3C is added with partial success. The shape of the STDP curves are similar but the amplitudes are not.
+- CaDP.m: Figure 5A-B are succesfully added.
+- Minor changes in the other files
+
+### Added
+
 ## 1.2 - 2017-03-23
 ### Changed
 - CaDP.m: Figure 3B is corrected with success. The problem was that I was considering half of all channels opening up after each spike. However, according to Shouval 2002, half of all closed channels open up after each spike. This means, for higher frequencies, while a portion of the channels are open, half of the remaining closed channels open up after a spike and this may make fraction of open NMDAr channels more than 0.5. This is why previously smaller frequencies produced good results but higher frequencies did not.

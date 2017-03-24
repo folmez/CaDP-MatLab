@@ -17,6 +17,13 @@ t = t-BPAP_delay;
 
 % Consider only the postsynaptic spike that happened after t
 t_post_spike = t_post_spike(t_post_spike<t);
+if isempty(t_post_spike)
+    % no postsynaptic spike occurred yet
+    t_post_spike = -inf;
+else
+    % take the latest postsynaptic spike
+    t_post_spike = t_post_spike(end);
+end
 
 % Fixed variables and functions
 I_f   = 0.75;   % Relative magnitude of the fast component
