@@ -2,11 +2,15 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 1.4 - 
+## 1.5
 ### TO-DO
-- The framework for Figure 4-5 is already finished. Update pdf with these results.
-- Why is 3C not fully replicated? Figure this out.
+- CaDP.m: Figure 4B did not work out. Smallest choice of the slow BPAP component decay rate did not produce the desired result. Figure this out. This will hopefully shed some light on the problem with Figure 3C as well.
 
+## 1.4 - 2017-03-27
+### Changed
+- CaDP.m: Figure 4A is succesfully added.
+- CaDP.m: Figure 5C is succesfully added.
+- Minor changes in the other files
 
 ## 1.3 - 2017-03-24
 ### Changed

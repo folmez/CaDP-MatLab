@@ -11,6 +11,19 @@ t = varargin{1};
 t_post_spike = varargin{2};
 BPAP_delay = varargin{3};
 BPAP_type = varargin{4};
+BPAP_tau_s = 25;                % BPAP slow decay rate
+% --------------------------------------------------------------------
+i = 5;
+while i<=length(varargin),
+    switch varargin{i},
+        case 'BPAP_tau_s',            BPAP_tau_s = varargin{i+1};
+        otherwise,
+            display(varargin{i});
+            error('Unexpected inputs!!!');
+    end
+    i = i+2;
+end
+% --------------------------------------------------------------------
 
 % BPAP arrives late, the spine should receive the BPAP from before
 t = t-BPAP_delay;
@@ -30,8 +43,8 @@ I_f   = 0.75;   % Relative magnitude of the fast component
 I_s   = 1-I_f;  % Relative magnitude of the slow component
 if strcmp(BPAP_type, 'BPAP + ADP')
     % ADP: After-depolarizing potential, i.e. slow component
-    tau_f = 3;      % Fast component decay rate (in ms)
-    tau_s = 25;     % Slow component decay rate (in ms)
+    tau_f = 3;              % Fast component decay rate (in ms)    
+    tau_s = BPAP_tau_s;     % Slow component decay rate (in ms)   
 elseif strcmp(BPAP_type, 'not set yet')
     tau_f = 15;
     tau_s = 50;
