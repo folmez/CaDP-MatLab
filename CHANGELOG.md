@@ -2,13 +2,19 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 1.5
+## 1.5 - 2017-03-29
 ### TO-DO
-- CaDP.m: Figure 4B did not work out. Smallest choice of the slow BPAP component decay rate did not produce the desired result. Figure this out. This will hopefully shed some light on the problem with Figure 3C as well.
+- Currently running figure 4a on the INS cluster. Three different simulations are running with different choices of dt. The choices are 0.1, 0.2, 0.5.
+
+## 1.5 - 2017-03-28
+### Changed
+- CaDP.m: It turns out that choice of dt=1 is a bit too crude. Yesterday's problems with Figure 4A is solved by choosing dt=0.1. When the step-size is too big, the BPAP decays too fast. So fast that 
+- CaDP.m: Figure 4A is currently running on the INS cluster.
+- CaDP.m: Figure 4B is partially replicated. For 1Hz, my output seems to be different that what's in the paper. But their result is also different from the Figure 3C. So they must be using different parameters without telling. So, I think, I am fine here.
+- CaDP.m: Save workscape option is added to some choices to run on the INS cluster.
 
 ## 1.4 - 2017-03-27
 ### Changed
-- CaDP.m: Figure 4A is succesfully added.
 - CaDP.m: Figure 5C is succesfully added.
 - Minor changes in the other files
 

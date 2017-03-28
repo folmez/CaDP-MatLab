@@ -8,6 +8,8 @@ I_f = varargin{4};
 
 which_calculation_method = 2;
 
+% Consider only the presynaptic spike that happened before t
+t_pre_spikes = t_pre_spikes( t_pre_spikes < t );
 t_i = t-t_pre_spikes;
 
 % Fixed variables and functions

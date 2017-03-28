@@ -7,7 +7,7 @@ norm = varargin{3};             % Chosen so that max EPSP is equal to s
 which_parameters = varargin{4};
 
 % Consider only the presynaptic spike that happened before t
-t_pre_spikes = t_pre_spikes(t_pre_spikes<t);
+t_pre_spikes = t_pre_spikes( t_pre_spikes < t );
 
 % Fixed variables and functions
 tau_1 = 50;

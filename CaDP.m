@@ -212,13 +212,26 @@ if strcmp(sim_protocol, 'VtRoPS')
     
     % Input arguments
     pre_spike_freq = varargin{2};       % Presynaptic freq (in Hz)
-    nr_pre_spikes  = varargin{3};       % # of presynaptic pulses
-    NMDA_r_I_f     = varargin{4};       % NMDAr fast decay component 
+    nr_pre_spikes  = 100;               % # of presynaptic pulses
+    NMDA_r_I_f     = 0.50;              % NMDAr fast decay component 
                                         % relative magnitude (0.5)
-    w_init         = varargin{5};       % Initial weight (0.25-0.26)
-
+    w_init         = 0.26;              % Initial weight (0.25-0.26)
+    dt             = 0.1;               % in ms
+    % --------------------------------------------------------------------
+    i = 3;
+    while i<=length(varargin),
+        switch varargin{i},
+            case 'NMDAr_I_f',              NMDAr_I_f = varargin{i+1};
+            case 'w_init',                    w_init = varargin{i+1};
+            case 'dt',                            dt = varargin{i+1};
+            otherwise,
+                display(varargin{i});
+                error('Unexpected inputs!!!');
+        end
+        i = i+2;
+    end
+    % --------------------------------------------------------------------     
     t0             = 0;                 % in ms
-    dt             = 1;                 % in ms
     V_rest         = -65;               % Resting potential
     EPSP_norm      = 0.6968;            % See Shouval 2002 supplementary
     EPSP_param_set = 2;
@@ -466,7 +479,9 @@ if strcmp(sim_protocol, 'VST')
     NMDAr_I_f               = 0.50;        % NMDAr fast decay rate
     BPAP_tau_s              = 25;          % BPAP slow decay rate
     pre_spike_freq          = 1;           % Presynaptic freq (in Hz)
+    nr_pre_spikes           = 100;         % # of presynaptic pulses
     w_init                  = 0.25;        % Initial weight
+    dt                      = 0.1;         % in ms
     % --------------------------------------------------------------------
     i = 3;
     while i<=length(varargin),
@@ -475,6 +490,8 @@ if strcmp(sim_protocol, 'VST')
             case 'BPAP_tau_s',            BPAP_tau_s = varargin{i+1};
             case 'pre_spike_freq',    pre_spike_freq = varargin{i+1};
             case 'w_init',                    w_init = varargin{i+1};
+            case 'dt',                            dt = varargin{i+1};
+            case 'nr_pre_spikes',      nr_pre_spikes = varargin{i+1};
             otherwise,
                 display(varargin{i});
                 error('Unexpected inputs!!!');
@@ -484,9 +501,7 @@ if strcmp(sim_protocol, 'VST')
     % -------------------------------------------------------------------- 
     t0             = 0;                 % in ms
     tend           = 1;                 % in ms (will be changed)
-    nr_pre_spikes  = 100;               % # of presynaptic pulses
     V_rest         = -65;               % Resting potential
-    dt             = 1;                 % in ms
     EPSP_norm      = 0.6968;            % See Shouval 2002 supplementary
     EPSP_param_set = 1;
     BPAP_delay     = 2;                 % in ms
@@ -554,13 +569,14 @@ if strcmp(sim_protocol, 'VST')
             
             % Calculate potential at the dentrite
             V_post(i) = V_rest + ...
-                EPSP(t_next, last_pre_spike_time, EPSP_norm, EPSP_param_set) + ...
+                EPSP(t_next, t_pre_spikes, EPSP_norm, ...
+                EPSP_param_set) + ...
                 BPAP(t_next, t_post_spikes, BPAP_delay, BPAP_type, ...
                 'BPAP_tau_s', BPAP_tau_s);
             % Calculate NMDA calcium current
             [NMDAr_cal_cur(i), NMDAr_frac(i)] = ...
                 NMDAr_calcium_current( ...
-                t_next, recent_t_pre_spikes, V_post(i), NMDAr_I_f, ...
+                t_next, t_pre_spikes, V_post(i), NMDAr_I_f, ...
                 closed_NMDAr_frac_before_spikes(1:spike_number));
             % Update Calcium level
             Ca(i) = update_Ca(Ca(i-1), NMDAr_cal_cur(i), dt);
@@ -590,7 +606,7 @@ if strcmp(sim_protocol, 'VST')
             xlabel('Time (ms)', 'FontSize', 15);
         else
             figure,
-            subplot(3,1,1),
+            subplot(4,1,1),
             plot(tt, Ca);
             ylim([0 max([1 max(Ca)])]);
             h_leg = legend('Calcium level', 'Location', 'Best');
@@ -600,15 +616,20 @@ if strcmp(sim_protocol, 'VST')
             plot([t0 tend], [0.35 0.35], 'k--');
             plot([t0 tend], [0.55 0.55], 'k--');
             
-            subplot(3,1,2),
+            subplot(4,1,2),
             plot(tt, w);
             h_leg = legend('Synaptic weight', 'Location', 'Best');
             set(h_leg, 'FontSize', 15);
             
-            subplot(3,1,3),
+            subplot(4,1,3),
             plot(tt, NMDAr_cal_cur);
             h_leg = legend('NMDAr calcium current', 'Location', 'Best');
             set(h_leg, 'FontSize', 15);
+            
+            subplot(4,1,4),
+            plot(tt, V_post);
+            h_leg = legend('Post potential', 'Location', 'Best');
+            set(h_leg, 'FontSize', 15);            
             
             figure,
             AX = plotyy(tt, NMDAr_frac, tt, V_post);
@@ -644,7 +665,21 @@ if strcmp(sim_protocol, 'EoBPAPoSTDP')
     % Input arguments
     spike_timing_diff = varargin{2}; % Spike timing diff. vector (in ms)    
     BPAP_tau_s_vec    = [15 25 50];  % BPAP slow component decay rate
-    
+    dt                = 0.1;
+    save_workspace    = 0;
+    % --------------------------------------------------------------------
+    i = 3;
+    while i<=length(varargin),
+        switch varargin{i},
+            case 'dt',                            dt = varargin{i+1};
+            case 'save_workspace',    save_workspace = varargin{i+1};
+            otherwise,
+                display(varargin{i});
+                error('Unexpected inputs!!!');
+        end
+        i = i+2;
+    end
+    % --------------------------------------------------------------------
     % 0 will be removed from the spike timing diff vector
     spike_timing_diff(spike_timing_diff==0) = [];
     nr_spike_timing_diff = length(spike_timing_diff);
@@ -656,7 +691,14 @@ if strcmp(sim_protocol, 'EoBPAPoSTDP')
     for i = 1:3
         BPAP_tau_s = BPAP_tau_s_vec(i);
         w_final_over_w_init_matrix(:,i) = CaDP('VST', ...
-            spike_timing_diff, 'BPAP_tau_s', BPAP_tau_s);
+            spike_timing_diff, 'BPAP_tau_s', BPAP_tau_s, 'dt', dt);
+    end
+    
+    % Save_results
+    if save_workspace
+        foldername = 'saved_workspaces/';
+        filename = [sim_protocol datestr(now,'mmmdd_HHMM') '.mat'];
+        save([foldername filename]);
     end
     
     % Plot results
@@ -671,17 +713,33 @@ if strcmp(sim_protocol, 'EoBPAPoSTDP')
     ylabel('w(final)/w(init)', 'FontSize', 15);
     ylim([0.2 2.3]);
     title('STDP', 'FontSize', 15);
+    
 end
 
 %% Effect of stimulation rate on STDP
 if strcmp(sim_protocol, 'EoSRoSTDP')
-    % Reference: Figure 4b in Shouval 2002
-    % Figure 4A:
+    % Reference: Figure 4B in Shouval 2002
+    % Figure 4B:
     
     % Input arguments
     spike_timing_diff  = varargin{2};   % Spike timing diff. vector (in ms)
     pre_spike_freq_vec = [1 5 10];      % Presynaptic freq vec (in Hz)
     w_init             = [.25 .25 .26]; % Initial weight
+    dt                 = 1;
+    save_workspace     = 0;
+    % --------------------------------------------------------------------
+    i = 3;
+    while i<=length(varargin),
+        switch varargin{i},
+            case 'dt',                            dt = varargin{i+1};
+            case 'save_workspace',    save_workspace = varargin{i+1};
+            otherwise,
+                display(varargin{i});
+                error('Unexpected inputs!!!');
+        end
+        i = i+2;
+    end
+    % --------------------------------------------------------------------
 
     % 0 will be removed from the spike timing diff vector
     spike_timing_diff(spike_timing_diff==0) = [];
@@ -695,9 +753,16 @@ if strcmp(sim_protocol, 'EoSRoSTDP')
         w_final_over_w_init_matrix(:,i) = CaDP('VST', ...
             spike_timing_diff, ...
             'pre_spike_freq', pre_spike_freq_vec(i), ...
-            'w_init', w_init(i));
+            'w_init', w_init(i), 'dt', dt);
     end
     
+    % Save_results
+    if save_workspace
+        foldername = 'saved_workspaces/';
+        filename = [sim_protocol datestr(now,'mmmdd_HHMM') '.mat'];
+        save([foldername filename]);
+    end
+
     % Plot results
     figure,
     plot(spike_timing_diff, w_final_over_w_init_matrix(:,1), 'b');
@@ -709,10 +774,9 @@ if strcmp(sim_protocol, 'EoSRoSTDP')
     xlabel('\Deltat (ms)', 'FontSize', 15);
     xlim([min(spike_timing_diff) max(spike_timing_diff)]);
     ylabel('w(final)/w(init)', 'FontSize', 15);
-    ylim([0.2 2.3]);
+    ylim([0 4.2]);
     title('STDP', 'FontSize', 15);
     
 end
 
-%% 
 end

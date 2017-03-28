@@ -8,7 +8,7 @@ function varargout = BPAP(varargin)
 
 % Input arguments
 t = varargin{1};
-t_post_spike = varargin{2};
+t_post_spikes = varargin{2};
 BPAP_delay = varargin{3};
 BPAP_type = varargin{4};
 BPAP_tau_s = 25;                % BPAP slow decay rate
@@ -24,18 +24,19 @@ while i<=length(varargin),
     i = i+2;
 end
 % --------------------------------------------------------------------
+output_option = 1;
 
 % BPAP arrives late, the spine should receive the BPAP from before
 t = t-BPAP_delay;
 
 % Consider only the postsynaptic spike that happened after t
-t_post_spike = t_post_spike(t_post_spike<t);
-if isempty(t_post_spike)
+t_post_spikes = t_post_spikes( t_post_spikes < t );
+if isempty(t_post_spikes)
     % no postsynaptic spike occurred yet
-    t_post_spike = -inf;
+    last_t_post_spike = -inf;
 else
     % take the latest postsynaptic spike
-    t_post_spike = t_post_spike(end);
+    last_t_post_spike = t_post_spikes(end);
 end
 
 % Fixed variables and functions
@@ -57,11 +58,12 @@ elseif strcmp(BPAP_type, 'Narrow BPAP')
 end
 
 % Output arguments
-if isempty(t_post_spike)
-    varargout{1} = 0;
-else
-    varargout{1} = 100 * ( I_f * exp(-(t-t_post_spike)/tau_f) + ...
-        I_s * exp(-(t-t_post_spike)/tau_s));
+if output_option == 1
+    varargout{1} = 100 * ( I_f * exp(-(t-last_t_post_spike)/tau_f) + ...
+        I_s * exp(-(t-last_t_post_spike)/tau_s));
+elseif output_option == 2
+    varargout{1} = 100 * ( I_f * sum(exp(-(t-t_post_spikes)/tau_f)) + ...
+        I_s * sum(exp(-(t-t_post_spikes)/tau_s)));
 end
 
 end
