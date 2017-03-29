@@ -2,9 +2,15 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 1.5 - 2017-03-29
-### TO-DO
-- Currently running figure 4a on the INS cluster. Three different simulations are running with different choices of dt. The choices are 0.1, 0.2, 0.5.
+## 1.7 - 2017-03-30
+### Changed
+- Still running figure 4a on the INS cluster. Three different simulations are running with different choices of dt. The choices are 0.1, 0.2, 0.5.
+
+## 1.6 - 2017-03-29
+### Changed
+- CaDP.m: Figure S9 can also be replicated with the option 'VST' (varying spike times).
+- Omega_calcium.m: Stochastic parameter options from Shouval 2004 are added.
+- eta_calcium.m: Stochastic parameter options from Shouval 2004 are added.
 
 ## 1.5 - 2017-03-28
 ### Changed
@@ -23,8 +29,6 @@ All notable changes to this project will be documented in this file.
 - CaDP.m: Figure 3C is added with partial success. The shape of the STDP curves are similar but the amplitudes are not.
 - CaDP.m: Figure 5A-B are succesfully added.
 - Minor changes in the other files
-
-### Added
 
 ## 1.2 - 2017-03-23
 ### Changed

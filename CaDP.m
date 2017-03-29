@@ -473,10 +473,13 @@ end
 if strcmp(sim_protocol, 'VST')
     % Reference: Figure 3C in Shouval 2002
     % Figure 3C: CaDP('VST', [-150:200], 0.50);   
+    % Figure S9: CaDP('VST', [-120:10:-20 -20:3:29 30:10:100], 'dt', 0.5,
+    %                 'NMDAr_I_f', 1, 'BPAP_tau_s', 75);
 
     % Input arguments
     spike_timing_difference = varargin{2}; % t_post - t_pre
-    NMDAr_I_f               = 0.50;        % NMDAr fast decay rate
+    NMDAr_I_f               = 0.50;        % NMDAr fast decay magnitude
+    NMDAr_tau_s             = 200;         % NMDAr slow decay rate
     BPAP_tau_s              = 25;          % BPAP slow decay rate
     pre_spike_freq          = 1;           % Presynaptic freq (in Hz)
     nr_pre_spikes           = 100;         % # of presynaptic pulses
@@ -487,6 +490,7 @@ if strcmp(sim_protocol, 'VST')
     while i<=length(varargin),
         switch varargin{i},
             case 'NMDAr_I_f',              NMDAr_I_f = varargin{i+1};
+            case 'NMDAr_tau_s',          NMDAr_tau_s = varargin{i+1};
             case 'BPAP_tau_s',            BPAP_tau_s = varargin{i+1};
             case 'pre_spike_freq',    pre_spike_freq = varargin{i+1};
             case 'w_init',                    w_init = varargin{i+1};
@@ -546,7 +550,9 @@ if strcmp(sim_protocol, 'VST')
         w  = w_init*ones(nr_time_steps, 1);         % Syanptic weight
         
         % Model
-        tSIM = tic;
+        tSIM = tic;                 % Keep track of the whole simulations
+        tDisplay = tic;             % Keep track display renewal
+        display_time_interval = 6;  % seconds
         last_pre_spike_time = inf;
         for i = 2:nr_time_steps
             t_next = t0+i*dt;
@@ -577,11 +583,22 @@ if strcmp(sim_protocol, 'VST')
             [NMDAr_cal_cur(i), NMDAr_frac(i)] = ...
                 NMDAr_calcium_current( ...
                 t_next, t_pre_spikes, V_post(i), NMDAr_I_f, ...
-                closed_NMDAr_frac_before_spikes(1:spike_number));
+                closed_NMDAr_frac_before_spikes(1:spike_number), ...
+                'NMDAr_tau_s', NMDAr_tau_s);
             % Update Calcium level
             Ca(i) = update_Ca(Ca(i-1), NMDAr_cal_cur(i), dt);
             % Update syanptic weight
             w(i)  = update_w(w(i-1), Ca(i), dt);
+            
+            % Display simulation progress
+            
+            if toc(tDisplay) > display_time_interval
+                % renew display clock
+                tDisplay = tic;
+                % display progress
+                fprintf('%2.2f%% is completed in %3.2f minutes...\n', ...
+                    100*i/nr_time_steps, toc(tSIM)/60);
+            end
         end
         
         % Calculate final weight as the average of min and max in the last
@@ -697,7 +714,7 @@ if strcmp(sim_protocol, 'EoBPAPoSTDP')
     % Save_results
     if save_workspace
         foldername = 'saved_workspaces/';
-        filename = [sim_protocol datestr(now,'mmmdd_HHMM') '.mat'];
+        filename = [sim_protocol datestr(now,'_mmmdd_HHMM') '.mat'];
         save([foldername filename]);
     end
     
@@ -759,7 +776,7 @@ if strcmp(sim_protocol, 'EoSRoSTDP')
     % Save_results
     if save_workspace
         foldername = 'saved_workspaces/';
-        filename = [sim_protocol datestr(now,'mmmdd_HHMM') '.mat'];
+        filename = [sim_protocol datestr(now,'_mmmdd_HHMM') '.mat'];
         save([foldername filename]);
     end
 
@@ -778,5 +795,66 @@ if strcmp(sim_protocol, 'EoSRoSTDP')
     title('STDP', 'FontSize', 15);
     
 end
+
+%% Effect of NMDAR slow decay rate
+if strcmp(sim_protocol, 'EoNMDARSDR')
+    % Reference: Not from Shouval 2002
+    
+    % Input arguments
+    spike_timing_diff  = varargin{2};   % Spike timing diff. vector (in ms)
+    NMDAr_tau_s_vec    = [100 200 300]; % NMDAR slow decay rate vector
+    dt                 = 0.1;
+    save_workspace     = 0;
+    % --------------------------------------------------------------------
+    i = 3;
+    while i<=length(varargin),
+        switch varargin{i},
+            case 'dt',                            dt = varargin{i+1};
+            case 'save_workspace',    save_workspace = varargin{i+1};
+            otherwise,
+                display(varargin{i});
+                error('Unexpected inputs!!!');
+        end
+        i = i+2;
+    end
+    % --------------------------------------------------------------------
+
+    % 0 will be removed from the spike timing diff vector
+    spike_timing_diff(spike_timing_diff==0) = [];
+    nr_spike_timing_diff = length(spike_timing_diff);
+    
+    % Initialization
+    w_final_over_w_init_matrix = zeros(nr_spike_timing_diff, 3);
+    
+    % Model
+    for i = 1:3
+        w_final_over_w_init_matrix(:,i) = CaDP('VST', ...
+            spike_timing_diff, 'NMDAr_tau_s', NMDAr_tau_s_vec(i), ...
+            'dt', dt);
+    end
+    
+    % Save_results
+    if save_workspace
+        foldername = 'saved_workspaces/';
+        filename = [sim_protocol datestr(now,'_mmmdd_HHMM') '.mat'];
+        save([foldername filename]);
+    end
+
+    % Plot results
+    figure,
+    plot(spike_timing_diff, w_final_over_w_init_matrix(:,1), 'r');
+    hold on;
+    plot(spike_timing_diff, w_final_over_w_init_matrix(:,2), 'k--');
+    plot(spike_timing_diff, w_final_over_w_init_matrix(:,3), 'g');
+%     plot([min(spike_timing_diff) max(spike_timing_diff)], [1 1], 'k:');
+%     plot([0 0], [0 4], 'k:');
+%     xlabel('\Deltat (ms)', 'FontSize', 15);
+%     xlim([min(spike_timing_diff) max(spike_timing_diff)]);
+%     ylabel('w(final)/w(init)', 'FontSize', 15);
+%     ylim([0 4.2]);
+    title('STDP', 'FontSize', 15);
+    
+end
+
 
 end
