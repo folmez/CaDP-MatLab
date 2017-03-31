@@ -17,10 +17,9 @@ if strcmp(sim_protocol, 'Single')
     t_pre_spike  = varargin{2}(3);   % in ms
     t_post_spike = varargin{2}(4);   % in ms
     BPAP_type    = varargin{3};
-    NMDA_r_I_f   = 0.50;             % NMDAr fast decay component 
+    NMDAr_I_f    = 0.50;             % NMDAr fast decay component 
     dt           = 0.1;              % in ms
     V_rest       = -65;              % in mV
-    BPAP_delay   = 2;                % in ms
     plot_NMDAr_calcium_current = 0;
     
     nr_time_steps = (tend-t0)/dt+1;
@@ -38,11 +37,12 @@ if strcmp(sim_protocol, 'Single')
         t_next = t0+i*dt;
         % Calculate potential at the dentrite
         V_post(i) = V_rest + EPSP(t_next, t_pre_spike, 1, 1) + ...
-            BPAP(t_next, t_post_spike, BPAP_delay, BPAP_type);
+            BPAP(t_next, t_post_spike, 'BPAP_type', BPAP_type);
         % Calculate NMDA calcium current
         [NMDAr_cal_cur(i), NMDAr_frac(i)] = NMDAr_calcium_current( ...
-            t_next, t_pre_spike, V_post(i), NMDA_r_I_f, ...
-            closed_NMDAr_frac_before_spike);
+            t_next, t_pre_spike, V_post(i), ...
+            closed_NMDAr_frac_before_spike, ...
+            'NMDAr_I_f', NMDAr_I_f);
         % Update Calcium level
         Ca(i) = update_Ca(Ca(i-1), NMDAr_cal_cur(i), dt);
     end
@@ -95,7 +95,7 @@ if strcmp(sim_protocol, 'PPSwPVC')
     pre_spike_freq = varargin{3}(1);    % Presynaptic freq (in Hz)
     nr_pre_spikes  = varargin{3}(2);    % # of presynaptic pulses
     V_post_c_vec   = varargin{4};       % Fixed post. potential (in mV)
-    NMDA_r_I_f     = varargin{5};       % NMDAr fast decay component 
+    NMDAr_I_f     = varargin{5};       % NMDAr fast decay component 
                                         % relative magnitude
     
     dt             = 1;                 % in ms
@@ -140,8 +140,8 @@ if strcmp(sim_protocol, 'PPSwPVC')
             % Update variables
             [NMDAr_cal_cur(i), NMDAr_frac(i)] = NMDAr_calcium_current( ...
                 t_next, recent_t_pre_spikes, V_post(i), ...
-                NMDA_r_I_f, ...
-                closed_NMDAr_frac_before_spikes(1:spike_number));
+                closed_NMDAr_frac_before_spikes(1:spike_number), ...
+                'NMDAr_I_f', NMDAr_I_f);
             Ca(i) = update_Ca(Ca(i-1), NMDAr_cal_cur(i), dt);
             w(i)  = update_w(w(i-1), Ca(i), dt);
             
@@ -213,7 +213,7 @@ if strcmp(sim_protocol, 'VtRoPS')
     % Input arguments
     pre_spike_freq = varargin{2};       % Presynaptic freq (in Hz)
     nr_pre_spikes  = 100;               % # of presynaptic pulses
-    NMDA_r_I_f     = 0.50;              % NMDAr fast decay component 
+    NMDAr_I_f     = 0.50;              % NMDAr fast decay component 
                                         % relative magnitude (0.5)
     w_init         = 0.26;              % Initial weight (0.25-0.26)
     dt             = 0.1;               % in ms
@@ -273,8 +273,9 @@ if strcmp(sim_protocol, 'VtRoPS')
                 EPSP_norm, EPSP_param_set);
             [NMDAr_cal_cur(i), NMDAr_frac(i)] = ...
                 NMDAr_calcium_current( ...
-                t_next, recent_t_pre_spikes, V_post(i), NMDA_r_I_f, ...
-                closed_NMDAr_frac_before_spikes(1:spike_number));
+                t_next, recent_t_pre_spikes, V_post(i), ...
+                closed_NMDAr_frac_before_spikes(1:spike_number), ...
+                'NMDAr_I_f', NMDAr_I_f);
             Ca(i) = update_Ca(Ca(i-1), NMDAr_cal_cur(i), dt);
             w(i)  = update_w(w(i-1), Ca(i), dt);
             
@@ -508,7 +509,6 @@ if strcmp(sim_protocol, 'VST')
     V_rest         = -65;               % Resting potential
     EPSP_norm      = 0.6968;            % See Shouval 2002 supplementary
     EPSP_param_set = 1;
-    BPAP_delay     = 2;                 % in ms
     BPAP_type      = 'BPAP + ADP';
     plot_only_w    = 0;
                 
@@ -577,14 +577,14 @@ if strcmp(sim_protocol, 'VST')
             V_post(i) = V_rest + ...
                 EPSP(t_next, t_pre_spikes, EPSP_norm, ...
                 EPSP_param_set) + ...
-                BPAP(t_next, t_post_spikes, BPAP_delay, BPAP_type, ...
+                BPAP(t_next, t_post_spikes, 'BPAP_type', BPAP_type, ...
                 'BPAP_tau_s', BPAP_tau_s);
             % Calculate NMDA calcium current
             [NMDAr_cal_cur(i), NMDAr_frac(i)] = ...
                 NMDAr_calcium_current( ...
-                t_next, t_pre_spikes, V_post(i), NMDAr_I_f, ...
+                t_next, t_pre_spikes, V_post(i), ...
                 closed_NMDAr_frac_before_spikes(1:spike_number), ...
-                'NMDAr_tau_s', NMDAr_tau_s);
+                'NMDAr_tau_s', NMDAr_tau_s, 'NMDAr_I_f', NMDAr_I_f);
             % Update Calcium level
             Ca(i) = update_Ca(Ca(i-1), NMDAr_cal_cur(i), dt);
             % Update syanptic weight
@@ -677,7 +677,7 @@ end
 %% Effect of BPAP on STDP
 if strcmp(sim_protocol, 'EoBPAPoSTDP')
     % Reference: Figure 4A in Shouval 2002
-    % Figure 4A: 
+    % Figure 4A: EoBPAPoSTDP_dt_0pnt5_Mar30_0224.mat
     
     % Input arguments
     spike_timing_diff = varargin{2}; % Spike timing diff. vector (in ms)    
@@ -799,6 +799,7 @@ end
 %% Effect of NMDAR slow decay rate
 if strcmp(sim_protocol, 'EoNMDARSDR')
     % Reference: Not from Shouval 2002
+    % EoNMDARSDR_dt_0pnt5_Mar30_0712.mat
     
     % Input arguments
     spike_timing_diff  = varargin{2};   % Spike timing diff. vector (in ms)
@@ -846,15 +847,230 @@ if strcmp(sim_protocol, 'EoNMDARSDR')
     hold on;
     plot(spike_timing_diff, w_final_over_w_init_matrix(:,2), 'k--');
     plot(spike_timing_diff, w_final_over_w_init_matrix(:,3), 'g');
-%     plot([min(spike_timing_diff) max(spike_timing_diff)], [1 1], 'k:');
-%     plot([0 0], [0 4], 'k:');
-%     xlabel('\Deltat (ms)', 'FontSize', 15);
-%     xlim([min(spike_timing_diff) max(spike_timing_diff)]);
-%     ylabel('w(final)/w(init)', 'FontSize', 15);
-%     ylim([0 4.2]);
+    for i = 3:-1:1
+        plot_leg{i} = ['NMDAr \tau_s=' num2str(NMDAr_tau_s_vec(i))];
+    end
+    h_leg = legend(plot_leg{1}, plot_leg{2}, plot_leg{3}, ...
+        'Location', 'Best');
+    set(h_leg, 'FontSize', 15);
+    plot([min(spike_timing_diff) max(spike_timing_diff)], [1 1], 'k:');
+    plot([0 0], [0.2 2.2], 'k:');
+    xlabel('\Deltat (ms)', 'FontSize', 15);
+    xlim([min(spike_timing_diff) max(spike_timing_diff)]);
+    ylabel('w(final)/w(init)', 'FontSize', 15);
+    ylim([0.2 2.2]);
     title('STDP', 'FontSize', 15);
     
 end
 
+%% STOCHASTIC CADP: Deterministic STDP with Shouval 2004 parameters
+if strcmp(sim_protocol, 'sCDAP_VST')
+    % Reference: Figure 1B in Shouval 2004
+
+    % Input arguments
+    spike_timing_difference = varargin{2}; % t_post - t_pre
+    NMDAr_version           = varargin{3}; 
+    % 'deterministic-with-stochastic-parameters'
+    % 'stochastic'
+    pre_spike_freq = 1;           % Presynaptic freq (in Hz)
+    nr_pre_spikes  = 100;         % # of presynaptic pulses
+    w_init         = 0.25;        % Initial weight
+    dt             = 0.1;         % in ms
+    BPAP_delay     = 0;
+    Z              = 10;          % # on NMDA receptors
+    % --------------------------------------------------------------------
+    i = 4;
+    while i<=length(varargin),
+        switch varargin{i},
+            case 'Z',                              Z = varargin{i+1};
+            case 'pre_spike_freq',    pre_spike_freq = varargin{i+1};
+            case 'w_init',                    w_init = varargin{i+1};
+            case 'dt',                            dt = varargin{i+1};
+            case 'nr_pre_spikes',      nr_pre_spikes = varargin{i+1};
+            otherwise,
+                display(varargin{i});
+                error('Unexpected inputs!!!');
+        end
+        i = i+2;
+    end
+    % -------------------------------------------------------------------- 
+    t0             = 0;                 % in ms
+    tend           = 1;                 % in ms (will be changed)
+    V_rest         = -65;               % Resting potential
+    EPSP_norm      = 0.6968;            % See Shouval 2002 supplementary
+    EPSP_param_set = 1;
+    plot_only_w    = 0;
+                
+    % Initialize presynaptic spike times
+    [t_pre_spikes, tend] = calculate_spike_times(...
+        pre_spike_freq, nr_pre_spikes, [t0 tend]);
+    % Initialize number of "closed NMDArs" right before each spike
+    closed_NMDAr_frac_before_spikes = ones(nr_pre_spikes, 1);
+    G_NMDA_for_each_spike = zeros(nr_pre_spikes, 1);
+    
+    % Remove 0 from spike timing difference vector
+    if ismember(0, spike_timing_difference)
+        spike_timing_difference = setdiff(spike_timing_difference, 0);
+    end
+    
+    % Find the length of the spike timing difference vector
+    nr_timing_diffs = length(spike_timing_difference);
+    % Initialize final weight vector
+    w_final = zeros(nr_timing_diffs, 1);
+    for timing_diff_idx = 1:nr_timing_diffs
+        % Find the current spike timing difference
+        spt = spike_timing_difference(timing_diff_idx);
+        
+        % Initialize postsynaptic spike times
+        if spt > 0
+            t_post_spikes = t_pre_spikes + abs(spt);
+        elseif spt < 0
+            t_post_spikes = t_pre_spikes;
+            t_pre_spikes  = t_pre_spikes + abs(spt);
+        end
+        tend = tend + spt;
+        
+        nr_time_steps = (tend-t0)/dt+1;
+        
+        % Initialize
+        V_post = V_rest * ones(nr_time_steps, 1);   % Postsyn. membrane pot.
+        NMDAr_frac = zeros(nr_time_steps, 1);       % Open NMDAr frac
+        NMDAr_cal_cur = zeros(nr_time_steps, 1);    % NMDAr calcium current
+        Ca = zeros(nr_time_steps, 1);               % Calcium level
+        w  = w_init*ones(nr_time_steps, 1);         % Syanptic weight
+        
+        % Model
+        tSIM = tic;                 % Keep track of the whole simulations
+        tDisplay = tic;             % Keep track display renewal
+        display_time_interval = 6;  % seconds
+        last_pre_spike_time = inf;
+        for i = 2:nr_time_steps
+            t_next = t0+i*dt;
+            
+            % Find the most recent presynaptic spike time indices
+            recent_t_pre_spikes = t_pre_spikes( t_pre_spikes < t_next );
+            spike_number = length(recent_t_pre_spikes);
+            % Record number of closed NMDArs if a new spike is coming
+            if ~isempty(recent_t_pre_spikes) && ...
+                    recent_t_pre_spikes(end) ~= last_pre_spike_time
+                closed_NMDAr_frac_before_spikes(spike_number) = ...
+                    1-NMDAr_frac(i-1);
+                if strcmp(NMDAr_version, 'stochastic')
+                    G_NMDA_for_each_spike(spike_number) = ...
+                        generate_random_maximal_chord_conductance(spt, Z);
+                end
+            end
+            % Record last presynaptic spike time
+            if isempty(recent_t_pre_spikes)
+                last_pre_spike_time = inf;
+            else
+                last_pre_spike_time = recent_t_pre_spikes(end);
+            end
+            
+            % Calculate potential at the dentrite
+            V_post(i) = V_rest + ...
+                EPSP(t_next, t_pre_spikes, EPSP_norm, ...
+                EPSP_param_set) + ...
+                BPAP(t_next, t_post_spikes, 'version', 'stochastic', ...
+                'BPAP_delay', BPAP_delay);
+            % Calculate NMDA calcium current
+            [NMDAr_cal_cur(i), NMDAr_frac(i)] = ...
+                NMDAr_calcium_current( ...
+                t_next, t_pre_spikes, V_post(i), ...
+                closed_NMDAr_frac_before_spikes(1:spike_number), ...
+                'version', NMDAr_version, ...
+                'G_NMDA_for_each_spike', ...
+                G_NMDA_for_each_spike(1:spike_number));
+% % %             , 'spt', spt, 'Z', Z);
+            % Update Calcium level
+            Ca(i) = update_Ca(Ca(i-1), NMDAr_cal_cur(i), dt, ...
+                'version', 'stochastic');
+            % Update syanptic weight
+            w(i)  = update_w(w(i-1), Ca(i), dt, 'version', 'stochastic');
+            
+            % Display simulation progress
+            
+            if toc(tDisplay) > display_time_interval
+                % renew display clock
+                tDisplay = tic;
+                % display progress
+                fprintf('%2.2f%% is completed in %3.2f minutes...\n', ...
+                    100*i/nr_time_steps, toc(tSIM)/60);
+            end
+        end
+        
+        % Calculate final weight as the average of min and max in the last
+        % 1 percent of simulation
+        one_percent = round((nr_time_steps-1)/100);
+        w_final(timing_diff_idx) = ( min(w(end-one_percent:end)) + ...
+            max(w(end-one_percent:end)) ) / 2;
+        fprintf('Spike timing difference = %i,\t', spt);
+        fprintf('w_final/w_init = %1.1f\n', ...
+            w_final(timing_diff_idx)/w_init);
+        toc(tSIM);
+
+    end
+        
+    % Plot results
+    if nr_timing_diffs == 1
+        tt = linspace(t0, tend, nr_time_steps)';
+        if plot_only_w
+            plot(tt, w);
+            h_leg = legend('Synaptic weight', 'Location', 'Best');
+            set(h_leg, 'FontSize', 15);
+            xlabel('Time (ms)', 'FontSize', 15);
+        else
+            figure,
+            subplot(4,1,1),
+            plot(tt, Ca);
+            ylim([0 max([1 max(Ca)])]);
+            h_leg = legend('Calcium level', 'Location', 'Best');
+            set(h_leg, 'FontSize', 15);
+            xlabel('Time (ms)', 'FontSize', 15);
+            hold on;
+            plot([t0 tend], [0.35 0.35], 'k--');
+            plot([t0 tend], [0.55 0.55], 'k--');
+            
+            subplot(4,1,2),
+            plot(tt, w);
+            h_leg = legend('Synaptic weight', 'Location', 'Best');
+            set(h_leg, 'FontSize', 15);
+            
+            subplot(4,1,3),
+            plot(tt, NMDAr_cal_cur);
+            h_leg = legend('NMDAr calcium current', 'Location', 'Best');
+            set(h_leg, 'FontSize', 15);
+            
+            subplot(4,1,4),
+            plot(tt, V_post);
+            h_leg = legend('Post potential', 'Location', 'Best');
+            set(h_leg, 'FontSize', 15);            
+            
+            figure,
+            AX = plotyy(tt, NMDAr_frac, tt, V_post);
+            h_leg = legend('NMDAr fraction', 'Post potential', ...
+                'Location', 'Best');
+            set(h_leg, 'FontSize', 15);
+        end
+    end
+    
+    % Plot potential vs w(final)/w(0) at the end
+    if nr_timing_diffs > 1
+        figure,
+        plot(spike_timing_difference, w_final/w_init);
+        xlabel('\Delta t = t_p_o_s_t - t_p_r_e', 'FontSize', 15);
+        ylabel('w(final)/w(init)', 'FontSize', 15);
+        title('STDP', 'FontSize', 15);
+        hold on;
+        plot([min(spike_timing_difference) ...
+            max(spike_timing_difference)], [1 1], 'k:');
+        
+        ylim([0.4 2.5]);
+    end
+    
+    % Output arguments
+    varargout{1} = w_final/w_init;
+        
+end
 
 end

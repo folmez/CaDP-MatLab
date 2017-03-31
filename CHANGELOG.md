@@ -2,15 +2,27 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+- FIGURE OUT HOW STOCHASTIC CADP WORKS!!!!
+- Still running figure 4a on the INS cluster. Three different simulations are running with different choices of dt. The choices are 0.1, 0.2, 0.5.
+
+## 1.8 - 2017-03-31
+### Changed
+- CaDP.m: Stochastic simulations tested. Results are not good.
+- "stochastic" parameter option is added to "NMDAr_calcium_current.m".
+
+### Added
+- "generate_random_maximal_chord_conductance.m": As described in Shouval 2004.
+
 ## 1.7 - 2017-03-30
 ### Changed
-- Still running figure 4a on the INS cluster. Three different simulations are running with different choices of dt. The choices are 0.1, 0.2, 0.5.
+- "Stochastic" parameter options are added to all reuqired routines except for "NMDAr_calcium_current.m".
+- "Deterministic with stochastic parameters" parameter option is added to "NMDAr_calcium_current.m" to replicate Figure 1B in Shouval 2004. "Stochastic" version will be added later.
 
 ## 1.6 - 2017-03-29
 ### Changed
 - CaDP.m: Figure S9 can also be replicated with the option 'VST' (varying spike times).
-- Omega_calcium.m: Stochastic parameter options from Shouval 2004 are added.
-- eta_calcium.m: Stochastic parameter options from Shouval 2004 are added.
+- Omega_calcium.m: "Stochastic" parameter options from Shouval 2004 are added.
+- eta_calcium.m: "Stochastic" parameter options from Shouval 2004 are added.
 
 ## 1.5 - 2017-03-28
 ### Changed
