@@ -45,9 +45,8 @@ else
         P0     = 0.5;
         G_NMDA = -1/325; % this is + in Shouval 2004, I think it is typo
     elseif strcmp(version, 'stochastic')
-        P0     = 1;
+        P0     = 0.5;
         G_NMDA = G_NMDA_for_each_spike;
-% % %         G_NMDA = generate_random_maximal_chord_conductance(spt, Z);
     end
 end
 V_r    = 130;       % Reversal potential for calcium (in mV)

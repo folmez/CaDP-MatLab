@@ -2,8 +2,14 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-- FIGURE OUT HOW STOCHASTIC CADP WORKS!!!!
-- Still running figure 4a on the INS cluster. Three different simulations are running with different choices of dt. The choices are 0.1, 0.2, 0.5.
+## 1.9 - 2017-04-05
+### Changed
+- CaDP.m: Stochastic CaDP option is added to replicate Figure 2 in Shouval 2004.
+- Currently running on INS server: CaDP('sCDAP_VST_det_and_sto', [-100:10:-20 -19:4:45 50:10:100], 20, 'save_workspace', 1);
+
+### Added
+- find_sCDAP_G_NMDA_gamma_dist_variance.m: If I am understanding correctly, variance of the gamma distribution, from which G_NMDA is randomly drawn, is determined so that the resulting Ca peak coffecient of variation is the same as the theory (Figure 1D in Shouval 2004).  This routine determines the variance so that the resulting Ca peak coeficient of variation is accurate with a relative error smaller than 0.01.
+- display_sim_progress.m: A little routine for displaying simulation progress
 
 ## 1.8 - 2017-03-31
 ### Changed

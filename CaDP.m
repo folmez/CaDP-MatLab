@@ -863,7 +863,114 @@ if strcmp(sim_protocol, 'EoNMDARSDR')
     
 end
 
-%% STOCHASTIC CADP: Deterministic STDP with Shouval 2004 parameters
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%% STOCHASTIC CADP, Shouval 2004 %%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Mean Calcium transient and their standard deviation
+if strcmp(sim_protocol, 'sCDAP_MuSigmaCa')
+    % Reference: Figure 1C in Shouval 2004
+    
+    % Input arguments
+    spike_timing_diff = varargin{2};    % t_post - t_pre
+    NMDAr_version     = varargin{3};    % 'deterministic-with-stochastic-parameters'
+                                        % 'stochastic'
+    nr_sims           = varargin{4};    % # of simulations
+    sigma_square      = varargin{5};    % variance of G_NMDAr
+    
+    dt             = 0.1;         % in ms
+    BPAP_delay     = 0;
+    Z              = 10;          % # on NMDA receptors
+    % --------------------------------------------------------------------
+    i = 6;
+    while i<=length(varargin),
+        switch varargin{i},
+            case 'Z',                              Z = varargin{i+1};
+            case 'dt',                            dt = varargin{i+1};
+            otherwise,
+                display(varargin{i});
+                error('Unexpected inputs!!!');
+        end
+        i = i+2;
+    end
+    % --------------------------------------------------------------------
+    t_pre_spike    = 0;                 % Pre-synaptic spike time
+    t_post_spike   = spike_timing_diff; % Postsynaptic spike time
+    
+    closed_NMDAr_frac_before_spike = 1;
+    
+    V_rest         = -65;               % Resting potential
+    EPSP_norm      = 0.6968;            % See Shouval 2002 supplementary
+    EPSP_param_set = 1;    
+    t0             = min(t_pre_spike, t_post_spike);
+    tend           = 500;
+    nr_time_steps  = (tend-t0)/dt+1;
+    
+    % Initialize
+    Ca_peaks = zeros(nr_sims, 1);
+    
+    % Model
+    [tDISP, tSIM] = display_sim_progress('initialize');
+    for k = 1:nr_sims        
+        % Initialize
+        V_post = V_rest * ones(nr_time_steps, 1);   % Postsyn. membrane pot.
+        NMDAr_frac = zeros(nr_time_steps, 1);       % Open NMDAr frac
+        NMDAr_cal_cur = zeros(nr_time_steps, 1);    % NMDAr calcium current
+        Ca = zeros(nr_time_steps, 1);               % Calcium level
+        G_NMDA_for_each_spike          = ...
+            generate_random_maximal_chord_conductance(...
+            spike_timing_diff, Z, 'sigma_square', sigma_square);
+        
+        % Model
+        for i = 2:nr_time_steps
+            t_next = t0+i*dt;
+            % Calculate potential at the dentrite
+            V_post(i) = V_rest + EPSP(t_next, t_pre_spike, EPSP_norm, ...
+                EPSP_param_set) + ...
+                BPAP(t_next, t_post_spike, 'version', 'stochastic', ...
+                'BPAP_delay', BPAP_delay);
+            % Calculate NMDA calcium current
+            [NMDAr_cal_cur(i), NMDAr_frac(i)] = ...
+                NMDAr_calcium_current(t_next, t_pre_spike, V_post(i), ...
+                closed_NMDAr_frac_before_spike, ...
+                'version', NMDAr_version, ...
+                'G_NMDA_for_each_spike', G_NMDA_for_each_spike);
+            % Update Calcium level
+            Ca(i) = update_Ca(Ca(i-1), NMDAr_cal_cur(i), dt);
+        end
+        
+        % Record Calcium peak
+        Ca_peaks(k) = max(Ca);
+        
+        % Display simulation progress
+        tDISP = display_sim_progress(k, nr_sims, tDISP, tSIM);
+    end
+    
+    % Plot results
+    figure,
+    if nr_sims == 1        
+        tt = linspace(t0, tend, nr_time_steps)';
+        plot(tt, Ca);
+        h_leg = legend('Calcium level', 'Location', 'Best');
+        set(h_leg, 'FontSize', 15);
+        xlabel('Time (ms)', 'FontSize', 15);
+    elseif nr_sims > 1
+        histogram(Ca_peaks, 'Normalization', 'probability');
+        CV_sim = std(nonzeros(Ca_peaks))/mean(nonzeros(Ca_peaks));
+        CV_theory = 0.095 + ...
+            0.0045*max([0 spike_timing_diff]) - ...
+            0.00067*min([0 spike_timing_diff]);
+        CV_error = CV_sim - CV_theory;
+        title(['\Deltat = ' num2str(spike_timing_diff) ...
+            ', nonzero Ca peaks CV = ', ...
+            num2str(CV_sim, '%1.2f'), ...
+            ', sim-theory =  ', num2str(CV_error, '%1.2f')]);
+    end
+    
+end
+
+%% Deterministic/Stochastic STDP with Shouval 2004 parameters
 if strcmp(sim_protocol, 'sCDAP_VST')
     % Reference: Figure 1B in Shouval 2004
 
@@ -872,6 +979,7 @@ if strcmp(sim_protocol, 'sCDAP_VST')
     NMDAr_version           = varargin{3}; 
     % 'deterministic-with-stochastic-parameters'
     % 'stochastic'
+    plot_results   = 1;
     pre_spike_freq = 1;           % Presynaptic freq (in Hz)
     nr_pre_spikes  = 100;         % # of presynaptic pulses
     w_init         = 0.25;        % Initial weight
@@ -882,6 +990,8 @@ if strcmp(sim_protocol, 'sCDAP_VST')
     i = 4;
     while i<=length(varargin),
         switch varargin{i},
+            case 'sigma_square',        sigma_square = varargin{i+1};
+            case 'plot_results',        plot_results = varargin{i+1};
             case 'Z',                              Z = varargin{i+1};
             case 'pre_spike_freq',    pre_spike_freq = varargin{i+1};
             case 'w_init',                    w_init = varargin{i+1};
@@ -957,7 +1067,8 @@ if strcmp(sim_protocol, 'sCDAP_VST')
                     1-NMDAr_frac(i-1);
                 if strcmp(NMDAr_version, 'stochastic')
                     G_NMDA_for_each_spike(spike_number) = ...
-                        generate_random_maximal_chord_conductance(spt, Z);
+                        generate_random_maximal_chord_conductance(...
+                        spt, Z, 'sigma_square', sigma_square);
                 end
             end
             % Record last presynaptic spike time
@@ -981,15 +1092,13 @@ if strcmp(sim_protocol, 'sCDAP_VST')
                 'version', NMDAr_version, ...
                 'G_NMDA_for_each_spike', ...
                 G_NMDA_for_each_spike(1:spike_number));
-% % %             , 'spt', spt, 'Z', Z);
             % Update Calcium level
             Ca(i) = update_Ca(Ca(i-1), NMDAr_cal_cur(i), dt, ...
                 'version', 'stochastic');
             % Update syanptic weight
             w(i)  = update_w(w(i-1), Ca(i), dt, 'version', 'stochastic');
             
-            % Display simulation progress
-            
+            % Display simulation progress            
             if toc(tDisplay) > display_time_interval
                 % renew display clock
                 tDisplay = tic;
@@ -1005,14 +1114,14 @@ if strcmp(sim_protocol, 'sCDAP_VST')
         w_final(timing_diff_idx) = ( min(w(end-one_percent:end)) + ...
             max(w(end-one_percent:end)) ) / 2;
         fprintf('Spike timing difference = %i,\t', spt);
-        fprintf('w_final/w_init = %1.1f\n', ...
+        fprintf('w_final/w_init = %1.3f\n', ...
             w_final(timing_diff_idx)/w_init);
         toc(tSIM);
 
     end
         
     % Plot results
-    if nr_timing_diffs == 1
+    if nr_timing_diffs == 1 && plot_results
         tt = linspace(t0, tend, nr_time_steps)';
         if plot_only_w
             plot(tt, w);
@@ -1055,7 +1164,7 @@ if strcmp(sim_protocol, 'sCDAP_VST')
     end
     
     % Plot potential vs w(final)/w(0) at the end
-    if nr_timing_diffs > 1
+    if nr_timing_diffs > 1 && plot_results
         figure,
         plot(spike_timing_difference, w_final/w_init);
         xlabel('\Delta t = t_p_o_s_t - t_p_r_e', 'FontSize', 15);
@@ -1072,5 +1181,104 @@ if strcmp(sim_protocol, 'sCDAP_VST')
     varargout{1} = w_final/w_init;
         
 end
+
+%% STDP window in Shouval 2004
+if strcmp(sim_protocol, 'sCDAP_VST_det_and_sto')
+    % Reference: Figure 2 in Shouval 2004
+    
+    % Input arguments
+    spike_timing_difference = varargin{2}; % t_post - t_pre
+    nr_reps                 = varargin{3};
+    dt                      = 0.1;   
+    Z                       = 10;
+    save_workspace          = 0;
+    plot_individual_results = 0;
+    % --------------------------------------------------------------------
+    i = 4;
+    while i<=length(varargin),
+        switch varargin{i},
+            case 'save_workspace',    save_workspace = varargin{i+1};
+            case 'Z',                              Z = varargin{i+1};
+            case 'dt',                            dt = varargin{i+1};
+            otherwise,
+                display(varargin{i});
+                error('Unexpected inputs!!!');
+        end
+        i = i+2;
+    end
+    % -------------------------------------------------------------------- 
+    % Remove 0 from spike timing difference vector
+    if ismember(0, spike_timing_difference)
+        spike_timing_difference = setdiff(spike_timing_difference, 0);
+    end
+    
+    % Find the length of the spike timing difference vector
+    nr_timing_diffs = length(spike_timing_difference);
+
+    % Initialized
+    sigma_square_vec = zeros(nr_timing_diffs, 1);
+    deterministic_w_final_over_w_init = zeros(nr_timing_diffs, 1); 
+    stochastic_w_final_over_w_init = zeros(nr_timing_diffs, nr_reps); 
+    
+    for i = 1:nr_timing_diffs
+        % Current spike timing difference 
+        spt = spike_timing_difference(i);
+        
+        % Find variance of G_NMDA gamma distribution variance that matches
+        % the theory
+        sigma_square_vec(i) = find_sCDAP_G_NMDA_gamma_dist_variance(spt);
+        
+        % Calculate deterministic synaptic plasticity
+        deterministic_w_final_over_w_init(i) = CaDP('sCDAP_VST', spt, ...
+            'deterministic-with-stochastic-parameters', ...
+            'plot_results', plot_individual_results, ...
+            'sigma_square', sigma_square_vec(i), 'dt', dt, 'Z', Z);
+        
+        % Calculate stochastic synaptic plasticity
+        for j = 1:nr_reps
+            stochastic_w_final_over_w_init(i, j) = ...
+                CaDP('sCDAP_VST', spt, 'stochastic', ...
+                'plot_results', plot_individual_results, ...
+                'sigma_square', sigma_square_vec(i), 'dt', dt, 'Z', Z);
+        end
+    end
+    
+    % Save_results
+    if save_workspace
+        foldername = 'saved_workspaces/';
+        filename = [sim_protocol datestr(now,'_mmmdd_HHMM') '.mat'];
+        save([foldername filename]);
+    end
+    
+    % Plot results
+    figure,
+    plot(spike_timing_difference, deterministic_w_final_over_w_init, 'k--');
+    hold on;
+    plot(spike_timing_difference, stochastic_w_final_over_w_init, 'b+');
+    errorbar(spike_timing_difference, ...
+        mean(stochastic_w_final_over_w_init, 2), ...
+        std(stochastic_w_final_over_w_init, 0, 2), 'g', ...
+        'LineWidth', 2);
+    plot([min(spike_timing_difference) ...
+        max(spike_timing_difference)], [1 1], 'k:');
+    xlim([min(spike_timing_difference)-1 max(spike_timing_difference)+1]);
+    xlabel('\Delta t = t_p_o_s_t - t_p_r_e', 'FontSize', 15);
+    ylabel('w(final)/w(init)', 'FontSize', 15);
+    title(['STDP (Z=' num2str(Z) ')'], 'FontSize', 15);
+    xlim([-150 150]);
+    
+    % Exponential fits
+    shift = 1;
+    idx = find(spike_timing_difference>0, 1);
+    x0  = spike_timing_difference(idx);
+    y0  = mean(stochastic_w_final_over_w_init(idx,:), 2) - shift;
+    pos_exp_fit_tau = 14;
+    pos_exp_fit_C   = y0/exp(-x0/pos_exp_fit_tau);
+    Xpos = (x0:max(spike_timing_difference))';
+    Ypos = pos_exp_fit_C * exp(-Xpos/14) + shift;
+    plot(Xpos, Ypos, 'r');
+        
+end
+
 
 end

@@ -22,11 +22,21 @@ function varargout = generate_random_maximal_chord_conductance(varargin)
 Delta_t = varargin{1};  % spike timing difference: t_post - t_pre
 Z       = varargin{2};  % # of NMDA receptors
 
-% Fixed parameters and functions
 mu           = 1/325;     % mu M/(ms mV)
 coeff_var    = 0.095 + 0.0045*max([0 Delta_t]) - 0.00067*min([0 Delta_t]); 
 sigma_square = (mu*coeff_var)^2;
-% % % sigma_square = 0.095 + 0.0045*max([0 Delta_t]) - 0.00067*min([0 Delta_t]);
+% --------------------------------------------------------------------
+i = 3;
+while i<=length(varargin),
+    switch varargin{i},
+        case 'sigma_square',    sigma_square = varargin{i+1};
+        otherwise,
+            display(varargin{i});
+            error('Unexpected inputs!!!');
+    end
+    i = i+2;
+end
+% --------------------------------------------------------------------
 
 % Model
 if rand <= 0.5
